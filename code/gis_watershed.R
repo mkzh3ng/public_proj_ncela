@@ -15,8 +15,9 @@ rm(list = ls())
 # flow direction (postfix, _dir)
 #
 # steps:
-# extract grid streams
-# vectorize
+# - merge raster layers
+# - extract grid streams
+# - vectorize
 #
 # functions:
 # - flow2grid (flow accumulation layer)
