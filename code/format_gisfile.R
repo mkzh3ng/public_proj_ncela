@@ -2,13 +2,19 @@
 
 pacman::p_load(tidyverse,
                sf,
-               mapview)
+               mapview,
+               wrapbox)
 
 rm(list = ls())
+
+## install.packages("remotes")
+## > remotes::install_github("aterui/wrapbox")
 
 # read data ---------------------------------------------------------------
 
 ## read data, janitor::clean_names() fix column names to snake case
+setwd("~/GitHub/public_proj_ncela")
+
 df_ts <- read_csv("data_src/data_rtf_ts.csv") %>% 
   janitor::clean_names()
 
@@ -32,12 +38,13 @@ key <- wrapbox::get_key(sf_site)
 
 ## change file path depending on the computer you use
 path0 <- here::here()
-path <- file.path("C:\\Users\\a_terui\\OneDrive - UNCG\\Documents\\shared_folder")
+path <- file.path("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis")
 
 ## set working directry where data is located
 setwd(path)
 
-list_r <- list.files("gis", pattern = key, full.names = TRUE) %>% 
+list_r <- list.files("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis",
+                     pattern = key, full.names = TRUE) %>% 
   lapply(FUN = function(x) {
     rasterfile <- terra::rast(x)
   })
