@@ -7,10 +7,10 @@ pacman::p_load(tidyverse,
 
 rm(list = ls())
 
-## install.packages("remotes")
-## > remotes::install_github("aterui/wrapbox")
-
 # read data ---------------------------------------------------------------
+
+## read mask layer
+sf_hybas <- st_read("data_src/hybas_na_lev04_v1c.shp")
 
 ## read data, janitor::clean_names() fix column names to snake case
 setwd("~/GitHub/public_proj_ncela")
