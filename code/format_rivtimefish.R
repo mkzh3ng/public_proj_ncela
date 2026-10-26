@@ -38,7 +38,7 @@ df_map <- df_f %>%
     crs = 4326
   )
 
-sf_nc_county <- readRDS("C:/Users/mitch/Desktop/I'm gitting/sf_nc_county.rds")
+sf_nc_county <- readRDS("data_src/sf_nc_county.rds")
 
 mapview(df_map) +
   (sf_nc_county)
