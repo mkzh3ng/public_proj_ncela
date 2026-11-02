@@ -10,11 +10,12 @@ rm(list = ls())
 # read data ---------------------------------------------------------------
 
 ## read mask layer
-sf_hybas <- st_read("data_src/hybas_na_lev04_v1c.shp")
+sf_hybas <- st_read("data_src/hybas_na_lev04_v1c.shp") %>% 
+  janitor::clean_names() %>% 
+  st_make_valid() %>% 
+  dplyr::select(hybas_id)
 
 ## read data, janitor::clean_names() fix column names to snake case
-setwd("~/GitHub/public_proj_ncela")
-
 df_ts <- read_csv("data_src/data_rtf_ts.csv") %>% 
   janitor::clean_names()
 
@@ -34,16 +35,26 @@ sf_site <- df_ts %>%
     crs = 4326
   )
 
-key <- wrapbox::get_key(sf_site)
+## find hybas polygons with sampling sites
+sf_mask <- sf_site %>% 
+  st_join(sf_hybas) %>% 
+  pull(hybas_id) %>% 
+  unique() %>% 
+  { filter(sf_hybas, hybas_id %in% .) }
+
+saveRDS(sf_mask, file = "data_fmt/sf_mask.rds")
+
+key <- wrapbox::get_key(sf_mask)
 
 ## change file path depending on the computer you use
 path0 <- here::here()
-path <- file.path("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis")
+#path <- file.path("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis")
+path <- file.path("C:/Users/a_terui/OneDrive - UNCG/Documents/shared_folder/gis")
 
 ## set working directry where data is located
 setwd(path)
 
-list_r <- list.files("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis",
+list_r <- list.files(path,
                      pattern = key, full.names = TRUE) %>% 
   lapply(FUN = function(x) {
     rasterfile <- terra::rast(x)
@@ -57,6 +68,7 @@ lapply(list_r,
          fnm <- names(x)
          terra::writeRaster(
            x,
-           filename = paste0("data_src/", fnm, ".tif")
+           filename = paste0("data_src/", fnm, ".tif"),
+           overwrite = TRUE
          )
        })
