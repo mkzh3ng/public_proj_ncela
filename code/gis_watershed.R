@@ -28,7 +28,10 @@ rm(list = ls())
 # - arc2d8 (convert flow direction from arc format to D8)
 
 ## merge rasters
-sf_mask <- readRDS("data_fmt/sf_mask.rds")
+sf_mask <- readRDS("data_fmt/sf_mask.rds") %>% 
+  st_transform(crs = 4087) %>% # WGS 84 / World Equidistant Cylindrical
+  st_buffer(dist = 10000) %>% 
+  st_transform(crs = 4326)
 
 fnm <- list.files(path = "data_src",
                   pattern = get_key(sf_mask[1, ]),
