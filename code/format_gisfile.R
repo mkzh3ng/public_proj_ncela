@@ -48,8 +48,8 @@ key <- wrapbox::get_key(sf_mask)
 
 ## change file path depending on the computer you use
 path0 <- here::here()
-#path <- file.path("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis")
-path <- file.path("C:/Users/a_terui/OneDrive - UNCG/Documents/shared_folder/gis")
+path <- file.path("C:/Users/Mitch/OneDrive - UNCG/Akira Terui's files - gis")
+# path <- file.path("C:/Users/a_terui/OneDrive - UNCG/Documents/shared_folder/gis")
 
 ## set working directry where data is located
 setwd(path)
