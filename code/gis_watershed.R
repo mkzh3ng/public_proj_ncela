@@ -28,37 +28,54 @@ rm(list = ls())
 # - arc2d8 (convert flow direction from arc format to D8)
 
 ## merge rasters
+
+# set buffer for mask layer
 sf_mask <- readRDS("data_fmt/sf_mask.rds") %>% 
   st_transform(crs = 4087) %>% # WGS 84 / World Equidistant Cylindrical
   st_buffer(dist = 10000) %>% 
   st_transform(crs = 4326)
 
-fnm <- list.files(path = "data_src",
-                  pattern = get_key(sf_mask[1, ]),
-                  full.names = TRUE)
+# fnm <- list.files(path = "data_src",
+#                   pattern = get_key(sf_mask[1, ]),
+#                   full.names = TRUE)
+# 
+# spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
+#                   FUN = rast) %>%
+#   sprc() %>%
+#   merge() %>%
+#   crop(sf_mask[1, ])
+# 
+# ## visualize check
+# ggplot() +
+#   geom_sf(data = sf_mask[1, ],
+#           fill = "red") +
+#   geom_spatraster(data = spr_upa,
+#                   alpha = 0.5)
+  
+list_upa <- lapply(X = 1:nrow(sf_mask),
+                   function(i) {
+                     fnm <- list.files(path = "data_src",
+                                       pattern = get_key(sf_mask[i, ]),
+                                       full.names = TRUE)
+                     
+                     spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
+                                       FUN = rast) %>%
+                       sprc() %>%
+                       merge() %>%
+                       crop(sf_mask[i, ])
+                     
+                     names(spr_upa) <- sf_mask$hybas_id[i]
+                     
+                     spr_upa
+                   })
 
-spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
-                  FUN = rast) %>% 
-  sprc() %>% 
-  merge() %>% 
-  crop(sf_mask[1, ])
-
-# list_upa <- lapply(X = 1:nrow(sf_mask),
-#                    function(i) {
-#                      fnm <- list.files(path = "data_src",
-#                                        pattern = get_key(sf_mask[i, ]),
-#                                        full.names = TRUE)
-#                      
-#                      spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
-#                                        FUN = rast) %>%
-#                        sprc() %>%
-#                        merge() %>%
-#                        crop(sf_mask[i, ])
-#                      
-#                      names(spr_upa) <- sf_mask$hybas_id[i]
-#                      
-#                      spr_upa
-#                    })
+ggplot() + 
+  geom_spatraster(data = list_upa[[1]]) + 
+  geom_spatraster(data = list_upa[[2]]) + 
+  geom_spatraster(data = list_upa[[3]]) + 
+  geom_spatraster(data = list_upa[[4]]) + 
+  geom_sf(data = sf_mask,
+          alpha = 0.5)
 
 ## create list_dir
 
@@ -122,19 +139,5 @@ sf_nc_str <- grid2stream(
   f_dir = rs_nc_dir,
   set_crs = TRUE
 )
-
-## replace sf_site with polygon object (sf_hybas)
-sf_hybas <- st_read("data_src/hybas_na_lev04_v1c.shp")
-
-df_hybas <- st_coordinates(sf_hybas) %>% 
-  as_tibble() 
-
-sf_hybas_coord <- st_as_sf(df_hybas, coords = c("X", "Y"), crs = 4326)
-
-sf_hybas_site <- sf_site %>% 
-  st_join(sf_hybas_coord,
-            by = "geometry", left = TRUE)
-
-key <- wrapbox::get_key()
 
 # watershed delineation ---------------------------------------------------
