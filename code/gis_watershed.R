@@ -51,7 +51,7 @@ sf_mask <- readRDS("data_fmt/sf_mask.rds") %>%
 #           fill = "red") +
 #   geom_spatraster(data = spr_upa,
 #                   alpha = 0.5)
-  
+
 list_upa <- lapply(X = 1:nrow(sf_mask),
                    function(i) {
                      fnm <- list.files(path = "data_src",
@@ -69,6 +69,7 @@ list_upa <- lapply(X = 1:nrow(sf_mask),
                      spr_upa
                    })
 
+## visualize data check
 ggplot() + 
   geom_spatraster(data = list_upa[[1]]) + 
   geom_spatraster(data = list_upa[[2]]) + 
@@ -80,22 +81,21 @@ ggplot() +
 ## create list_dir
 
 ## extract grid streams
-rs_upa <- rast("data_src/n30w080_upa.tif")
-rs_strg <- flow2grid(
-  f_acc = rs_upa, 
-  threshold = 1, 
-  output = "data_src/strg.tif"
-)
+# rs_upa <- rast("data_src/n30w080_upa.tif")
+# rs_strg <- flow2grid(
+#   f_acc = rs_upa, 
+#   threshold = 1, 
+#   output = "data_src/strg.tif"
+# )
 
-# lapply(list_spr,
-#        function(x) {
-#          
-#          flow2grid(
-#            f_acc = x,
-#            threshold = 1,
-#            output = paste0("data_src/strg_", names(x), ".tif")
-#          )
-#        })
+lapply(list_upa,
+       function(x) {
+         flow2grid(
+           f_acc = x,
+           threshold = 1,
+           output = paste0("data_src/strg_", names(x), ".tif")
+         )
+       })
 
 ## from stream grid to stream vector
 rs_dir <- rast("data_src/n30w080_dir.tif") %>% 
@@ -107,20 +107,7 @@ sf_str <- grid2stream(
   set_crs = TRUE
 )
 
-# combining raster files --------------------------------------------------
-## .upa files 
-rs_n30w080 <- rs_upa
-rs_n30w085 <- rast("data_src/n30w085_upa.tif")
-rs_n35w080 <- rast("data_src/n35w080_upa.tif")
-rs_n35w085 <- rast("data_src/n35w085_upa.tif")
-
-rs_flow_acc <- merge(rs_n30w080,rs_n30w085,rs_n35w080,rs_n35w085)
-
-rs_nc_strg <- flow2grid(
-  f_acc = rs_flow_acc, 
-  threshold = 1, 
-  output = "data_src/nc_flow_strg.tif"
-)
+# combining raster files ------------------------------------------------
 
 ## .dir files
 rs_dir_n30w080 <- rs_dir
