@@ -70,13 +70,13 @@ list_upa <- lapply(X = 1:nrow(sf_mask),
                    })
 
 ## visualize data check
-ggplot() + 
-  geom_spatraster(data = list_upa[[1]]) + 
-  geom_spatraster(data = list_upa[[2]]) + 
-  geom_spatraster(data = list_upa[[3]]) + 
-  geom_spatraster(data = list_upa[[4]]) + 
-  geom_sf(data = sf_mask,
-          alpha = 0.5)
+# ggplot() + 
+#   geom_spatraster(data = list_upa[[1]]) + 
+#   geom_spatraster(data = list_upa[[2]]) + 
+#   geom_spatraster(data = list_upa[[3]]) + 
+#   geom_spatraster(data = list_upa[[4]]) + 
+#   geom_sf(data = sf_mask,
+#           alpha = 0.5)
 
 ## create list_dir
 
@@ -88,18 +88,26 @@ ggplot() +
 #   output = "data_src/strg.tif"
 # )
 
-lapply(list_upa,
-       function(x) {
-         flow2grid(
-           f_acc = x,
-           threshold = 1,
-           output = paste0("data_src/strg_", names(x), ".tif")
-         )
-       })
+list_flow <- lapply(list_upa,
+                    function(x) {
+                      flow2grid(
+                        f_acc = x,
+                        threshold = 1,
+                        output = paste0("data_src/strg_", names(x), ".tif")
+                      )
+                    })
 
 ## from stream grid to stream vector
-rs_dir <- rast("data_src/n30w080_dir.tif") %>% 
-  arc2d8()
+# riv_dir <- lapply(list, arc2d8) do it the directional data!
+
+list_dir <- lapply(list_flow,
+                   function(x){
+                      grid2stream(
+                        str_grid = list_flow, # another lapply function?
+                        f_dir = x,
+                        set_crs = TRUE,
+                      )
+                    })
 
 sf_str <- grid2stream(
   str_grid = rs_strg,
@@ -107,24 +115,5 @@ sf_str <- grid2stream(
   set_crs = TRUE
 )
 
-# combining raster files ------------------------------------------------
-
-## .dir files
-rs_dir_n30w080 <- rs_dir
-rs_dir_n30w085 <- rast("data_src/n30w085_dir.tif")
-rs_dir_n35w080 <- rast("data_src/n35w080_dir.tif")
-rs_dir_n35w085 <- rast("data_src/n35w085_dir.tif")
-
-rs_nc_dir <- merge(rs_dir_n30w080,
-                   rs_dir_n30w085,
-                   rs_dir_n35w080,
-                   rs_dir_n35w085) %>% 
-  arc2d8()
-
-sf_nc_str <- grid2stream(
-  str_grid = rs_nc_strg,
-  f_dir = rs_nc_dir,
-  set_crs = TRUE
-)
-
 # watershed delineation ---------------------------------------------------
+
