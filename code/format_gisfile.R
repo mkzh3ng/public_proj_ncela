@@ -35,6 +35,8 @@ sf_site <- df_ts %>%
     crs = 4326
   )
 
+saveRDS(sf_site, "data_fmt/sf_site_nc.rds")
+
 ## find hybas polygons with sampling sites
 sf_mask <- sf_site %>% 
   st_join(sf_hybas) %>% 
