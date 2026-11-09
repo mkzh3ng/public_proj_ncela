@@ -35,85 +35,67 @@ sf_mask <- readRDS("data_fmt/sf_mask.rds") %>%
   st_buffer(dist = 10000) %>% 
   st_transform(crs = 4326)
 
-# fnm <- list.files(path = "data_src",
-#                   pattern = get_key(sf_mask[1, ]),
-#                   full.names = TRUE)
-# 
-# spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
-#                   FUN = rast) %>%
-#   sprc() %>%
-#   merge() %>%
-#   crop(sf_mask[1, ])
-# 
-# ## visualize check
-# ggplot() +
-#   geom_sf(data = sf_mask[1, ],
-#           fill = "red") +
-#   geom_spatraster(data = spr_upa,
-#                   alpha = 0.5)
-
-list_upa <- lapply(X = 1:nrow(sf_mask),
-                   function(i) {
-                     fnm <- list.files(path = "data_src",
-                                       pattern = get_key(sf_mask[i, ]),
-                                       full.names = TRUE)
-                     
-                     spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
-                                       FUN = rast) %>%
-                       sprc() %>%
-                       merge() %>%
-                       crop(sf_mask[i, ])
-                     
-                     names(spr_upa) <- sf_mask$hybas_id[i]
-                     
-                     spr_upa
-                   })
-
-## visualize data check
-# ggplot() + 
-#   geom_spatraster(data = list_upa[[1]]) + 
-#   geom_spatraster(data = list_upa[[2]]) + 
-#   geom_spatraster(data = list_upa[[3]]) + 
-#   geom_spatraster(data = list_upa[[4]]) + 
-#   geom_sf(data = sf_mask,
-#           alpha = 0.5)
-
-## create list_dir
+list_raster <- lapply(X = 1:nrow(sf_mask),
+                      function(i) {
+                        fnm <- list.files(path = "data_src",
+                                          pattern = get_key(sf_mask[i, ]),
+                                          full.names = TRUE)
+                        
+                        ## flow accumulation layer
+                        spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
+                                          FUN = rast) %>%
+                          sprc() %>%
+                          merge() %>%
+                          crop(sf_mask[i, ])
+                        
+                        names(spr_upa) <- sf_mask$hybas_id[i]
+                        
+                        ## flow direction layer
+                        spr_dir_arc <- lapply(fnm[str_detect(fnm, "_dir")],
+                                              FUN = rast) %>%
+                          sprc() %>%
+                          merge() %>%
+                          crop(sf_mask[i, ])
+                        
+                        ## convert arc-based flow dir to D8 flow dir
+                        spr_dir <- arc2d8(spr_dir_arc)
+                        
+                        names(spr_dir) <- sf_mask$hybas_id[i]
+                        
+                        ## return named list
+                        list(upa = spr_upa, dir = spr_dir)
+                      })
 
 ## extract grid streams
-# rs_upa <- rast("data_src/n30w080_upa.tif")
-# rs_strg <- flow2grid(
-#   f_acc = rs_upa, 
-#   threshold = 1, 
-#   output = "data_src/strg.tif"
-# )
-
-list_flow <- lapply(list_upa,
+list_strg <- lapply(X = list_raster,
                     function(x) {
+                      ## access flow accumulation layer
+                      y <- x$upa
+                      
+                      ## convert from flow acc to stream grids
                       flow2grid(
-                        f_acc = x,
+                        f_acc = y,
                         threshold = 1,
-                        output = paste0("data_src/strg_", names(x), ".tif")
+                        output = paste0("data_src/strg_", names(y), ".tif")
                       )
                     })
 
-## from stream grid to stream vector
-# riv_dir <- lapply(list, arc2d8) do it the directional data!
+## covert stream grids to stream vectors
+list_channel <- lapply(X = seq_len(length(list_raster)),
+                       function(i){
+                         grid2stream(
+                           str_grid = list_strg[[i]],
+                           f_dir = list_raster[[i]]$dir,
+                           set_crs = TRUE,
+                         )
+                       })
 
-list_dir <- lapply(list_flow,
-                   function(x){
-                      grid2stream(
-                        str_grid = list_flow, # another lapply function?
-                        f_dir = x,
-                        set_crs = TRUE,
-                      )
-                    })
-
-sf_str <- grid2stream(
-  str_grid = rs_strg,
-  f_dir = rs_dir,
-  set_crs = TRUE
-)
+saveRDS(list_channel, "data_fmt/sf_channel.rds")
 
 # watershed delineation ---------------------------------------------------
+
+sf_site_nc <- readRDS("data_fmt/sf_site_nc.rds") %>% 
+  rename(site = time_series_id)
+
+## use wrapbox::wsd_unnested() for watershed delineation
 
