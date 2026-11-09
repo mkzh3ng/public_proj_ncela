@@ -3,7 +3,7 @@
 pacman::p_load(tidyverse,
                sf,
                mapview,
-               wrapbox,
+               wrapbox,)
 
 rm(list = ls())
 
