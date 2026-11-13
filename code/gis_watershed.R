@@ -7,10 +7,10 @@ pacman::p_load(tidyverse,
                wrapbox,
                mapview)
 
+## remotes::install_github("aterui/wrapbox@v0.2.1")
 ## whitebox::install_whitebox()
 
 rm(list = ls())
-
 
 # stream network delineation ----------------------------------------------
 # data:
@@ -35,42 +35,58 @@ sf_mask <- readRDS("data_fmt/sf_mask.rds") %>%
   st_buffer(dist = 10000) %>% 
   st_transform(crs = 4326)
 
-list_raster <- lapply(X = 1:nrow(sf_mask),
-                      function(i) {
-                        fnm <- list.files(path = "data_src",
-                                          pattern = get_key(sf_mask[i, ]),
-                                          full.names = TRUE)
-                        
-                        ## flow accumulation layer
-                        spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
-                                          FUN = rast) %>%
-                          sprc() %>%
-                          merge() %>%
-                          crop(sf_mask[i, ])
-                        
-                        names(spr_upa) <- sf_mask$hybas_id[i]
-                        
-                        ## flow direction layer
-                        spr_dir_arc <- lapply(fnm[str_detect(fnm, "_dir")],
-                                              FUN = rast) %>%
-                          sprc() %>%
-                          merge() %>%
-                          crop(sf_mask[i, ])
-                        
-                        ## convert arc-based flow dir to D8 flow dir
-                        spr_dir <- arc2d8(spr_dir_arc)
-                        
-                        names(spr_dir) <- sf_mask$hybas_id[i]
-                        
-                        ## return named list
-                        list(upa = spr_upa, dir = spr_dir)
-                      })
+v_hybas <- sort(unique(sf_mask$hybas_id))
+
+lapply(X = 1:nrow(sf_mask),
+       function(i) {
+         fnm <- list.files(path = "data_src",
+                           pattern = get_key(sf_mask[i, ]),
+                           full.names = TRUE)
+         
+         ## flow accumulation layer
+         spr_upa <- lapply(fnm[str_detect(fnm, "_upa")],
+                           FUN = rast) %>%
+           sprc() %>%
+           merge() %>%
+           crop(sf_mask[i, ])
+         
+         names(spr_upa) <- sf_mask$hybas_id[i]
+         
+         ## flow direction layer
+         spr_dir_arc <- lapply(fnm[str_detect(fnm, "_dir")],
+                               FUN = rast) %>%
+           sprc() %>%
+           merge() %>%
+           crop(sf_mask[i, ])
+         
+         ## convert arc-based flow dir to D8 flow dir
+         spr_dir <- arc2d8(spr_dir_arc)
+         
+         names(spr_dir) <- sf_mask$hybas_id[i]
+         
+         ## return named list
+         writeRaster(x = spr_upa, 
+                     filename = paste0("data_src/spr_upa_", 
+                                       sf_mask$hybas_id[i], 
+                                       ".tif"),
+                     overwrite = TRUE,
+                     wopt = list(datatype = "FLT4S"))
+         
+         writeRaster(x = spr_dir, 
+                     filename = paste0("data_src/spr_dir_", 
+                                       sf_mask$hybas_id[i], 
+                                       ".tif"),
+                     overwrite = TRUE,
+                     wopt = list(datatype = "INT4S"))
+       })
 
 ## extract grid streams
-list_strg <- lapply(X = list_raster,
+list_strg <- lapply(X = v_hybas,
                     function(x) {
                       ## access flow accumulation layer
-                      y <- x$upa
+                      y <- rast(
+                        paste0("data_src/spr_upa_", x, ".tif")
+                      )
                       
                       ## convert from flow acc to stream grids
                       flow2grid(
@@ -95,7 +111,52 @@ saveRDS(list_channel, "data_fmt/sf_channel.rds")
 # watershed delineation ---------------------------------------------------
 
 sf_site_nc <- readRDS("data_fmt/sf_site_nc.rds") %>% 
-  rename(site = time_series_id)
+  rename(site = time_series_id) %>% 
+  st_join(sf_mask)
+
+lapply(v_hybas,
+       function(x) {
+         outlet_x <- sf_site_nc %>% 
+           filter(hybas_id == x)
+         
+         dir_x <- rast(
+           paste0("data_src/spr_dir_", x, ".tif")
+         )
+         
+         strg_x <- rast(
+           paste0("data_src/strg_", x, ".tif")
+         )
+         
+         sf_wsd_x <- wsd_unnested(
+           outlet = outlet_x,
+           id_col = "site",
+           f_dir = dir_x,
+           str_grid = strg_x, 
+           snap = TRUE, 
+           snap_dist = 5
+         )
+         
+         saveRDS(
+           sf_wsd_x, 
+           file = paste0("data_fmt/sf_wsd_", v_hybas[1], ".rds")
+         )
+       })
+
+
+
+?wrapbox::wsd_unnested
+
+list_wsd <- lapply(X = seq_len(length(list_raster)),
+                   function(i){
+                     wsd_unnested(
+                       outlet = paste0("data_fmt/sf_", names, ".rds"),
+                       id_col = NULL,
+                       f_dir = list_raster[[i]]$dir,
+                       str_grid = list_strg[[i]], 
+                       snap = TRUE, 
+                       snap_dist = 5
+                     )
+                   })
 
 ## use wrapbox::wsd_unnested() for watershed delineation
 
