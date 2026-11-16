@@ -97,7 +97,7 @@ list_strg <- lapply(X = v_hybas,
                     })
 
 ## covert stream grids to stream vectors
-list_channel <- lapply(X = seq_len(length(list_raster)),
+list_channel <- lapply(X = 1:nrow(sf_mask),
                        function(i){
                          grid2stream(
                            str_grid = list_strg[[i]],
@@ -109,6 +109,7 @@ list_channel <- lapply(X = seq_len(length(list_raster)),
 saveRDS(list_channel, "data_fmt/sf_channel.rds")
 
 # watershed delineation ---------------------------------------------------
+## use wrapbox::wsd_unnested() for watershed delineation
 
 sf_site_nc <- readRDS("data_fmt/sf_site_nc.rds") %>% 
   rename(site = time_series_id) %>% 
@@ -138,25 +139,14 @@ lapply(v_hybas,
          
          saveRDS(
            sf_wsd_x, 
-           file = paste0("data_fmt/sf_wsd_", v_hybas[1], ".rds")
+           file = paste0("data_fmt/sf_wsd_", v_hybas[x], ".rds")
          )
        })
 
+sf_1 <- readRDS("data_fmt/sf_wsd_7040042040.rds")
+sf_2 <- readRDS("data_fmt/sf_wsd_7040612640.rds")
 
-
-?wrapbox::wsd_unnested
-
-list_wsd <- lapply(X = seq_len(length(list_raster)),
-                   function(i){
-                     wsd_unnested(
-                       outlet = paste0("data_fmt/sf_", names, ".rds"),
-                       id_col = NULL,
-                       f_dir = list_raster[[i]]$dir,
-                       str_grid = list_strg[[i]], 
-                       snap = TRUE, 
-                       snap_dist = 5
-                     )
-                   })
-
-## use wrapbox::wsd_unnested() for watershed delineation
-
+ggplot() + 
+  geom_sf(data = sf_1) +
+  geom_sf(data = sf_2,
+          aes(fill = "blue"))
