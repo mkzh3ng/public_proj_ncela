@@ -82,7 +82,7 @@ lapply(X = 1:nrow(sf_mask),
 
 ## extract grid streams
 list_strg <- lapply(X = v_hybas,
-                    function(x) {
+                    FUN = function(x) {
                       ## access flow accumulation layer
                       y <- rast(
                         paste0("data_src/spr_upa_", x, ".tif")
@@ -92,16 +92,16 @@ list_strg <- lapply(X = v_hybas,
                       flow2grid(
                         f_acc = y,
                         threshold = 1,
-                        output = paste0("data_src/strg_", names(y), ".tif")
+                        output = paste0("data_src/spr_strg_", names(y), ".tif")
                       )
                     })
 
 ## covert stream grids to stream vectors
-list_channel <- lapply(X = 1:nrow(sf_mask),
-                       function(i){
+list_channel <- lapply(X = v_hybas,
+                       FUN = function(x){
                          grid2stream(
-                           str_grid = list_strg[[i]],
-                           f_dir = list_raster[[i]]$dir,
+                           str_grid = rast(paste0("data_src/spr_strg_", x, ".tif")),
+                           f_dir = rast(paste0("data_src/spr_dir_", x, ".tif")),
                            set_crs = TRUE,
                          )
                        })
@@ -115,8 +115,8 @@ sf_site_nc <- readRDS("data_fmt/sf_site_nc.rds") %>%
   rename(site = time_series_id) %>% 
   st_join(sf_mask)
 
-lapply(v_hybas,
-       function(x) {
+lapply(X = v_hybas,
+       FUN = function(x) {
          outlet_x <- sf_site_nc %>% 
            filter(hybas_id == x)
          
@@ -125,7 +125,7 @@ lapply(v_hybas,
          )
          
          strg_x <- rast(
-           paste0("data_src/strg_", x, ".tif")
+           paste0("data_src/spr_strg_", x, ".tif")
          )
          
          sf_wsd_x <- wsd_unnested(
@@ -139,14 +139,17 @@ lapply(v_hybas,
          
          saveRDS(
            sf_wsd_x, 
-           file = paste0("data_fmt/sf_wsd_", v_hybas[x], ".rds")
+           file = paste0("data_fmt/sf_wsd_", x, ".rds")
          )
        })
 
-sf_1 <- readRDS("data_fmt/sf_wsd_7040042040.rds")
-sf_2 <- readRDS("data_fmt/sf_wsd_7040612640.rds")
+## read and combine
+sf_wsd <- list.files(
+  "data_fmt", 
+  pattern = "sf_wsd_\\d*\\.rds",
+  full.names = TRUE
+) %>% 
+  lapply(FUN = readRDS) %>% 
+  bind_rows()
 
-ggplot() + 
-  geom_sf(data = sf_1) +
-  geom_sf(data = sf_2,
-          aes(fill = "blue"))
+mapview(sf_wsd, map.types = "OpenStreetMap")
