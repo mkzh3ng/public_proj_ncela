@@ -111,9 +111,11 @@ saveRDS(list_channel, "data_fmt/sf_channel.rds")
 # watershed delineation ---------------------------------------------------
 ## use wrapbox::wsd_unnested() for watershed delineation
 
+sf_hybas <- readRDS("data_fmt/sf_mask.rds")
+
 sf_site_nc <- readRDS("data_fmt/sf_site_nc.rds") %>% 
   rename(site = time_series_id) %>% 
-  st_join(sf_mask)
+  st_join(sf_hybas)
 
 lapply(X = v_hybas,
        FUN = function(x) {
